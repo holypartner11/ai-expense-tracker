@@ -6,6 +6,8 @@ const API_KEY_STORAGE = 'zhipu_api_key';
 
 // 当前解析结果（待确认）
 let currentParsed = null;
+let recordToDelete = null;
+let currentFilter = '';
 
 // DOM 元素
 const apiKeyInput = document.getElementById('apiKeyInput');
@@ -17,6 +19,11 @@ const previewContent = document.getElementById('previewContent');
 const confirmBtn = document.getElementById('confirmBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 const loading = document.getElementById('loading');
+const categoryFilter = document.getElementById('categoryFilter');
+const undoModal = document.getElementById('undoModal');
+const undoRecordText = document.getElementById('undoRecordText');
+const confirmUndoBtn = document.getElementById('confirmUndoBtn');
+const cancelUndoBtn = document.getElementById('cancelUndoBtn');
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
@@ -47,6 +54,12 @@ toggleKeyBtn.addEventListener('click', () => {
         apiKeyInput.type = 'password';
         toggleKeyBtn.textContent = '显示';
     }
+});
+
+// 分类筛选
+categoryFilter.addEventListener('change', (e) => {
+    currentFilter = e.target.value;
+    loadRecentRecords();
 });
 
 // 提交记账
@@ -182,6 +195,33 @@ cancelBtn.addEventListener('click', () => {
     currentParsed = null;
 });
 
+// 显示撤销确认弹窗
+function showUndoModal(record) {
+    recordToDelete = record;
+    undoRecordText.textContent = `${record.description} ¥${record.amount}`;
+    undoModal.classList.remove('hidden');
+}
+
+// 确认撤销
+confirmUndoBtn.addEventListener('click', () => {
+    if (!recordToDelete) return;
+
+    const records = getRecords().filter(r => r.id !== recordToDelete.id);
+    saveRecords(records);
+    
+    recordToDelete = null;
+    undoModal.classList.add('hidden');
+    
+    updateStats();
+    loadRecentRecords();
+});
+
+// 取消撤销
+cancelUndoBtn.addEventListener('click', () => {
+    recordToDelete = null;
+    undoModal.classList.add('hidden');
+});
+
 // 获取所有记录
 function getRecords() {
     const data = localStorage.getItem(STORAGE_KEY);
@@ -231,8 +271,13 @@ function updateStats() {
 
 // 加载最近记录
 function loadRecentRecords() {
-    const records = getRecords();
+    let records = getRecords();
     const recentRecords = document.getElementById('recentRecords');
+
+    // 应用分类筛选
+    if (currentFilter) {
+        records = records.filter(r => r.category === currentFilter);
+    }
 
     if (records.length === 0) {
         recentRecords.innerHTML = '<p class="text-sm text-gray-400">还没有记账记录</p>';
@@ -245,7 +290,13 @@ function loadRecentRecords() {
                 <p class="text-sm font-medium">${r.description}</p>
                 <p class="text-xs text-gray-500">${r.category} · ${r.date}</p>
             </div>
-            <span class="text-sm font-bold text-red-600">-¥${r.amount.toFixed(2)}</span>
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-red-600">-¥${r.amount.toFixed(2)}</span>
+                <button onclick='showUndoModal(${JSON.stringify(r).replace(/'/g, "&#39;")})' 
+                    class="text-xs text-gray-400 hover:text-red-600 px-2 py-1">
+                    撤销
+                </button>
+            </div>
         </div>
     `).join('');
 }
