@@ -1,0 +1,59 @@
+/* 智能记账 - 样式 */
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* 动画 */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#previewArea {
+    animation: slideIn 0.3s ease;
+}
+
+/* 输入框焦点 */
+input:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 按钮点击效果 */
+button:active {
+    transform: scale(0.98);
+}
+
+/* 分类颜色 */
+.category-餐饮 { background-color: #fef3c7; color: #92400e; }
+.category-交通 { background-color: #dbeafe; color: #1e40af; }
+.category-购物 { background-color: #fce7f3; color: #9d174d; }
+.category-娱乐 { background-color: #e9d5ff; color: #6b21a8; }
+.category-居住 { background-color: #d1fae5; color: #065f46; }
+.category-医疗 { background-color: #fee2e2; color: #991b1b; }
+.category-教育 { background-color: #cffafe; color: #155e75; }
+.category-其他 { background-color: #f3f4f6; color: #374151; }
