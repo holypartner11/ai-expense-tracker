@@ -209,10 +209,12 @@ function setupEventListeners() {
         }
     });
     
-    // 智谱链接点击 - 自动填充并跳转
-    zhipuLink.addEventListener('click', (e) => {
-        selectModel('glm-4-flash');
-        apiKeyInput.focus();
+    // 智谱链接点击 - 延迟自动填充，确保跳转优先
+    zhipuLink.addEventListener('click', () => {
+        setTimeout(() => {
+            selectModel('glm-4-flash');
+            apiKeyInput.focus();
+        }, 100);
     });
     
     // 测试连接按钮
