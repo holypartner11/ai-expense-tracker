@@ -43,6 +43,13 @@ const MODEL_REGISTRY = {
     'doubao-pro': 'https://ark.cn-beijing.volces.com/api/v3'
 };
 
+// 所有模型列表（用于下拉菜单）
+const ALL_MODELS = Object.keys(MODEL_REGISTRY);
+
+// 下拉菜单状态
+let dropdownSelectedIndex = -1;
+let currentDropdownItems = [];
+
 // 当前解析结果（待确认）
 let currentParsed = null;
 let recordToDelete = null;
@@ -50,6 +57,7 @@ let currentFilter = '';
 
 // DOM 元素
 const modelInput = document.getElementById('modelInput');
+const modelDropdown = document.getElementById('modelDropdown');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const apiHint = document.getElementById('apiHint');
 const recordInput = document.getElementById('recordInput');
@@ -130,9 +138,58 @@ function updateApiHint(modelName) {
 
 // 设置事件监听
 function setupEventListeners() {
-    // 模型输入变化时更新提示
+    // 模型输入变化时显示下拉菜单
     modelInput.addEventListener('input', () => {
-        updateApiHint(modelInput.value);
+        const value = modelInput.value.trim();
+        updateApiHint(value);
+        
+        if (value.length > 0) {
+            showModelDropdown(value);
+        } else {
+            hideModelDropdown();
+        }
+    });
+    
+    // 输入框聚焦时如果有内容也显示下拉
+    modelInput.addEventListener('focus', () => {
+        const value = modelInput.value.trim();
+        if (value.length > 0) {
+            showModelDropdown(value);
+        }
+    });
+    
+    // 键盘导航
+    modelInput.addEventListener('keydown', (e) => {
+        if (!currentDropdownItems.length) return;
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                dropdownSelectedIndex = Math.min(dropdownSelectedIndex + 1, currentDropdownItems.length - 1);
+                updateDropdownSelection();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                dropdownSelectedIndex = Math.max(dropdownSelectedIndex - 1, -1);
+                updateDropdownSelection();
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (dropdownSelectedIndex >= 0 && currentDropdownItems[dropdownSelectedIndex]) {
+                    selectModel(currentDropdownItems[dropdownSelectedIndex]);
+                }
+                break;
+            case 'Escape':
+                hideModelDropdown();
+                break;
+        }
+    });
+    
+    // 点击其他地方隐藏下拉菜单
+    document.addEventListener('click', (e) => {
+        if (!modelInput.contains(e.target) && !modelDropdown.contains(e.target)) {
+            hideModelDropdown();
+        }
     });
     
     // 失去焦点时保存
@@ -151,10 +208,10 @@ function setupEventListeners() {
     });
     
     // 智谱链接点击 - 自动填充
-    zhipuLink.addEventListener('click', () => {
-        modelInput.value = 'glm-4-flash';
-        updateApiHint('glm-4-flash');
-        saveApiConfig();
+    zhipuLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        selectModel('glm-4-flash');
+        apiKeyInput.focus();
     });
     
     // 分类筛选
@@ -176,6 +233,96 @@ function setupEventListeners() {
     // 撤销
     confirmUndoBtn.addEventListener('click', confirmUndo);
     cancelUndoBtn.addEventListener('click', cancelUndo);
+}
+
+// 显示模型下拉菜单
+function showModelDropdown(query) {
+    query = query.toLowerCase();
+    
+    // 过滤匹配的模型
+    const matches = ALL_MODELS.filter(model => 
+        model.toLowerCase().includes(query)
+    );
+    
+    if (matches.length === 0) {
+        hideModelDropdown();
+        return;
+    }
+    
+    currentDropdownItems = matches;
+    dropdownSelectedIndex = -1;
+    
+    // 渲染下拉菜单
+    modelDropdown.innerHTML = matches.map((model, index) => {
+        const provider = getProviderName(model);
+        return `
+            <div class="model-option px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer flex items-center justify-between ${index === 0 ? 'bg-blue-50' : ''}" 
+                 data-model="${model}" data-index="${index}">
+                <span class="font-medium">${model}</span>
+                <span class="text-xs text-gray-400">${provider}</span>
+            </div>
+        `;
+    }).join('');
+    
+    // 添加点击事件
+    modelDropdown.querySelectorAll('.model-option').forEach(option => {
+        option.addEventListener('click', () => {
+            selectModel(option.dataset.model);
+        });
+        option.addEventListener('mouseenter', () => {
+            dropdownSelectedIndex = parseInt(option.dataset.index);
+            updateDropdownSelection();
+        });
+    });
+    
+    modelDropdown.classList.remove('hidden');
+}
+
+// 隐藏下拉菜单
+function hideModelDropdown() {
+    modelDropdown.classList.add('hidden');
+    currentDropdownItems = [];
+    dropdownSelectedIndex = -1;
+}
+
+// 更新下拉菜单选中状态
+function updateDropdownSelection() {
+    const options = modelDropdown.querySelectorAll('.model-option');
+    options.forEach((opt, idx) => {
+        if (idx === dropdownSelectedIndex) {
+            opt.classList.add('bg-blue-100');
+            opt.classList.remove('bg-blue-50');
+        } else {
+            opt.classList.remove('bg-blue-100');
+            if (idx === 0) {
+                opt.classList.add('bg-blue-50');
+            }
+        }
+    });
+}
+
+// 选择模型
+function selectModel(model) {
+    modelInput.value = model;
+    updateApiHint(model);
+    saveApiConfig();
+    hideModelDropdown();
+}
+
+// 获取提供商名称
+function getProviderName(model) {
+    const url = MODEL_REGISTRY[model];
+    if (!url) return '自定义';
+    
+    if (url.includes('bigmodel.cn')) return '智谱';
+    if (url.includes('moonshot.cn')) return 'Moonshot';
+    if (url.includes('deepseek.com')) return 'DeepSeek';
+    if (url.includes('openai.com')) return 'OpenAI';
+    if (url.includes('anthropic.com')) return 'Anthropic';
+    if (url.includes('groq.com')) return 'Groq';
+    if (url.includes('aliyuncs.com')) return '阿里云';
+    if (url.includes('volces.com')) return '火山引擎';
+    return '其他';
 }
 
 async function handleSubmit() {
