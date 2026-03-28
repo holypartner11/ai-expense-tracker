@@ -1,6 +1,6 @@
 # 智能记账 App
 
-一个支持自然语言输入的网页版记账应用，调用智谱 GLM-4-Flash AI 解析记账内容。
+一个支持自然语言输入的网页版记账应用，调用 AI 自动解析记账内容。
 
 ## 功能
 
@@ -8,30 +8,71 @@
 - 🤖 **AI 自动解析**：自动提取金额、分类、描述、日期
 - 💾 **本地存储**：数据存在浏览器里，隐私安全
 - 📊 **实时统计**：本月支出、分类统计、最近记录
+- 🔧 **多模型支持**：支持智谱、Moonshot、DeepSeek、OpenAI 等主流模型
 
 ## 使用方法
 
-1. **申请 API Key**
-   - 访问 [智谱 AI 开放平台](https://open.bigmodel.cn/)
-   - 注册账号，创建 API Key（免费额度足够用）
+### 1. 配置 AI 模型
 
-2. **打开应用**
-   - 用浏览器打开 `index.html`
-   - 输入 API Key（会保存在本地）
+只需要填写 **2 个信息**：
 
-3. **开始记账**
-   - 在输入框里说话，比如：
-     - 「打车花了35」
-     - 「买了杯奶茶18」
-     - 「昨天交房租2500」
-     - 「周末看电影花了80」
-   - 点击「记账」，AI 会自动解析
-   - 确认无误后保存
+| 配置项 | 说明 | 示例 |
+|--------|------|------|
+| **模型名称** | 输入模型名称或完整 API 地址 | `glm-4-flash`、`kimi-k2.5`、`deepseek-chat` |
+| **API Key** | 模型提供商的 API 密钥 | `sk-...` |
+
+输入模型名称后，系统会自动匹配对应的 API 地址。
+
+### 2. 获取 API Key
+
+根据你选择的模型，前往对应平台申请：
+
+- **智谱 GLM**：https://open.bigmodel.cn/usercenter/apikeys （免费额度足够用）
+- **Moonshot (Kimi)**：https://platform.moonshot.cn/
+- **DeepSeek**：https://platform.deepseek.com/
+- **OpenAI**：https://platform.openai.com/
+
+### 3. 开始记账
+
+1. 用浏览器打开 `index.html`
+2. 输入模型名称和 API Key（自动保存到本地）
+3. 在输入框里说话记账，例如：
+   - 「打车花了35」
+   - 「买了杯奶茶18」
+   - 「昨天交房租2500」
+   - 「周末看电影花了80」
+4. 点击「记账」，AI 自动解析
+5. 确认无误后保存
+
+## 支持的模型
+
+输入以下模型名称，系统会自动识别对应的 API 地址：
+
+| 提供商 | 支持的模型 | 自动识别的关键词 |
+|--------|-----------|-----------------|
+| **智谱** | `glm-4-flash`、`glm-4`、`glm-4v` | `glm` |
+| **Moonshot** | `kimi-k2.5`、`kimi-k2`、`kimi-k2-turbo` | `kimi` |
+| **DeepSeek** | `deepseek-chat`、`deepseek-coder`、`deepseek-reasoner` | `deepseek` |
+| **OpenAI** | `gpt-3.5-turbo`、`gpt-4`、`gpt-4o`、`gpt-4o-mini` | `gpt` |
+| **Anthropic** | `claude-3-opus`、`claude-3-sonnet`、`claude-3-haiku` | `claude` |
+| **Groq** | `llama3-70b`、`mixtral-8x7b` | `llama`、`groq` |
+| **阿里云** | `qwen-turbo`、`qwen-plus` | `qwen` |
+| **火山引擎** | `doubao-pro` | `doubao` |
+
+### 自定义 API 地址
+
+如果你的模型不在列表中，可以直接填写完整的 API 地址：
+
+```
+https://api.example.com/v1/your-model-name
+```
+
+系统会自动解析 URL 和模型名称。
 
 ## 文件结构
 
 ```
-accounting-app/
+ai-expense-tracker/
 ├── index.html    # 主页面
 ├── app.js        # 核心逻辑
 ├── style.css     # 样式
@@ -43,14 +84,17 @@ accounting-app/
 - HTML5 + Tailwind CSS（界面）
 - 原生 JavaScript（逻辑）
 - LocalStorage（数据存储）
-- 智谱 GLM-4-Flash（AI 解析）
+- OpenAI 兼容 API（支持大多数国产模型）
 
 ## 注意事项
 
 - API Key 只存在你的浏览器里，不会上传到任何地方
 - 数据只存在本地，换浏览器/清缓存会丢失
+- 支持 OpenAI 格式的 API 接口（`/chat/completions`）
 - 后续可升级云端同步版本
 
-## 免费额度
+## 隐私说明
 
-智谱 GLM-4-Flash 模型目前免费，足够个人记账使用。
+- 所有数据存储在浏览器 LocalStorage 中
+- API Key 不会离开你的设备
+- 记账数据不会上传到任何服务器

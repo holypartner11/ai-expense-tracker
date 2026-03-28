@@ -2,7 +2,46 @@
 
 // 存储键名
 const STORAGE_KEY = 'accounting_records';
-const API_KEY_STORAGE = 'zhipu_api_key';
+const API_CONFIG_STORAGE = 'accounting_api_config';
+
+// 模型名称 → API 地址映射表
+const MODEL_REGISTRY = {
+    // 智谱
+    'glm-4-flash': 'https://open.bigmodel.cn/api/paas/v4',
+    'glm-4': 'https://open.bigmodel.cn/api/paas/v4',
+    'glm-4v': 'https://open.bigmodel.cn/api/paas/v4',
+    'glm-4-long': 'https://open.bigmodel.cn/api/paas/v4',
+    
+    // Moonshot
+    'kimi-k2.5': 'https://api.moonshot.cn/v1',
+    'kimi-k2': 'https://api.moonshot.cn/v1',
+    'kimi-k2-turbo': 'https://api.moonshot.cn/v1',
+    
+    // DeepSeek
+    'deepseek-chat': 'https://api.deepseek.com/v1',
+    'deepseek-coder': 'https://api.deepseek.com/v1',
+    'deepseek-reasoner': 'https://api.deepseek.com/v1',
+    
+    // OpenAI
+    'gpt-3.5-turbo': 'https://api.openai.com/v1',
+    'gpt-4': 'https://api.openai.com/v1',
+    'gpt-4o': 'https://api.openai.com/v1',
+    'gpt-4o-mini': 'https://api.openai.com/v1',
+    
+    // Anthropic
+    'claude-3-opus': 'https://api.anthropic.com/v1',
+    'claude-3-sonnet': 'https://api.anthropic.com/v1',
+    'claude-3-haiku': 'https://api.anthropic.com/v1',
+    
+    // Groq
+    'llama3-70b': 'https://api.groq.com/openai/v1',
+    'mixtral-8x7b': 'https://api.groq.com/openai/v1',
+    
+    // 其他
+    'qwen-turbo': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    'qwen-plus': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    'doubao-pro': 'https://ark.cn-beijing.volces.com/api/v3'
+};
 
 // 当前解析结果（待确认）
 let currentParsed = null;
@@ -10,7 +49,9 @@ let recordToDelete = null;
 let currentFilter = '';
 
 // DOM 元素
+const modelInput = document.getElementById('modelInput');
 const apiKeyInput = document.getElementById('apiKeyInput');
+const apiHint = document.getElementById('apiHint');
 const recordInput = document.getElementById('recordInput');
 const submitBtn = document.getElementById('submitBtn');
 const toggleKeyBtn = document.getElementById('toggleKeyBtn');
@@ -24,52 +65,122 @@ const undoModal = document.getElementById('undoModal');
 const undoRecordText = document.getElementById('undoRecordText');
 const confirmUndoBtn = document.getElementById('confirmUndoBtn');
 const cancelUndoBtn = document.getElementById('cancelUndoBtn');
+const zhipuLink = document.getElementById('zhipuLink');
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
-    loadApiKey();
+    loadApiConfig();
     updateStats();
     loadRecentRecords();
+    setupEventListeners();
 });
 
-// 加载保存的 API Key
-function loadApiKey() {
-    const savedKey = localStorage.getItem(API_KEY_STORAGE);
-    if (savedKey) {
-        apiKeyInput.value = savedKey;
+// 根据模型名检测 API 地址
+function detectApiUrl(modelName) {
+    modelName = modelName.toLowerCase().trim();
+    
+    // 精确匹配
+    if (MODEL_REGISTRY[modelName]) {
+        return MODEL_REGISTRY[modelName];
+    }
+    
+    // 前缀/包含匹配
+    for (const [key, url] of Object.entries(MODEL_REGISTRY)) {
+        if (modelName.includes(key) || key.includes(modelName)) {
+            return url;
+        }
+    }
+    
+    return null;
+}
+
+// 加载保存的配置
+function loadApiConfig() {
+    const saved = localStorage.getItem(API_CONFIG_STORAGE);
+    if (saved) {
+        const config = JSON.parse(saved);
+        modelInput.value = config.model || '';
+        apiKeyInput.value = config.key || '';
+        updateApiHint(config.model);
     }
 }
 
-// 保存 API Key
-apiKeyInput.addEventListener('blur', () => {
-    localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value.trim());
-});
+// 保存配置
+function saveApiConfig() {
+    const config = {
+        model: modelInput.value.trim(),
+        key: apiKeyInput.value.trim()
+    };
+    localStorage.setItem(API_CONFIG_STORAGE, JSON.stringify(config));
+}
 
-// 切换 API Key 显示/隐藏
-toggleKeyBtn.addEventListener('click', () => {
-    if (apiKeyInput.type === 'password') {
-        apiKeyInput.type = 'text';
-        toggleKeyBtn.textContent = '隐藏';
+// 更新 API 地址提示
+function updateApiHint(modelName) {
+    const url = detectApiUrl(modelName);
+    if (url) {
+        apiHint.textContent = `→ ${new URL(url).hostname}`;
+        apiHint.classList.remove('hidden');
+    } else if (modelName) {
+        apiHint.textContent = '⚠️ 请填写完整 API 地址';
+        apiHint.classList.remove('hidden');
     } else {
-        apiKeyInput.type = 'password';
-        toggleKeyBtn.textContent = '显示';
+        apiHint.classList.add('hidden');
     }
-});
+}
 
-// 分类筛选
-categoryFilter.addEventListener('change', (e) => {
-    currentFilter = e.target.value;
-    loadRecentRecords();
-});
-
-// 提交记账
-submitBtn.addEventListener('click', handleSubmit);
-recordInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleSubmit();
-});
+// 设置事件监听
+function setupEventListeners() {
+    // 模型输入变化时更新提示
+    modelInput.addEventListener('input', () => {
+        updateApiHint(modelInput.value);
+    });
+    
+    // 失去焦点时保存
+    modelInput.addEventListener('blur', saveApiConfig);
+    apiKeyInput.addEventListener('blur', saveApiConfig);
+    
+    // 切换 API Key 显示
+    toggleKeyBtn.addEventListener('click', () => {
+        if (apiKeyInput.type === 'password') {
+            apiKeyInput.type = 'text';
+            toggleKeyBtn.textContent = '隐藏';
+        } else {
+            apiKeyInput.type = 'password';
+            toggleKeyBtn.textContent = '显示';
+        }
+    });
+    
+    // 智谱链接点击 - 自动填充
+    zhipuLink.addEventListener('click', () => {
+        modelInput.value = 'glm-4-flash';
+        updateApiHint('glm-4-flash');
+        saveApiConfig();
+    });
+    
+    // 分类筛选
+    categoryFilter.addEventListener('change', (e) => {
+        currentFilter = e.target.value;
+        loadRecentRecords();
+    });
+    
+    // 提交记账
+    submitBtn.addEventListener('click', handleSubmit);
+    recordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSubmit();
+    });
+    
+    // 确认/取消
+    confirmBtn.addEventListener('click', confirmSave);
+    cancelBtn.addEventListener('click', cancelSave);
+    
+    // 撤销
+    confirmUndoBtn.addEventListener('click', confirmUndo);
+    cancelUndoBtn.addEventListener('click', cancelUndo);
+}
 
 async function handleSubmit() {
     const text = recordInput.value.trim();
+    const modelName = modelInput.value.trim();
     const apiKey = apiKeyInput.value.trim();
 
     if (!text) {
@@ -77,8 +188,14 @@ async function handleSubmit() {
         return;
     }
 
+    if (!modelName) {
+        alert('请输入模型名称');
+        modelInput.focus();
+        return;
+    }
+
     if (!apiKey) {
-        alert('请先输入智谱 API Key');
+        alert('请输入 API Key');
         apiKeyInput.focus();
         return;
     }
@@ -86,7 +203,7 @@ async function handleSubmit() {
     loading.classList.remove('hidden');
 
     try {
-        const result = await parseWithAI(text, apiKey);
+        const result = await parseWithAI(text, modelName, apiKey);
         currentParsed = result;
         showPreview(result);
     } catch (error) {
@@ -96,8 +213,26 @@ async function handleSubmit() {
     }
 }
 
-// 调用智谱 AI 解析
-async function parseWithAI(text, apiKey) {
+// 调用 AI 解析
+async function parseWithAI(text, modelName, apiKey) {
+    let baseUrl = detectApiUrl(modelName);
+    
+    // 如果没匹配到，尝试解析模型名是否为 URL
+    if (!baseUrl && modelName.startsWith('http')) {
+        baseUrl = modelName.replace(/\/$/, '');
+        // 从 URL 中提取模型名（如果有）
+        const urlParts = baseUrl.split('/');
+        modelName = urlParts[urlParts.length - 1] || 'default';
+        baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
+    }
+    
+    // 还是没找到，报错
+    if (!baseUrl) {
+        throw new Error('无法识别此模型，请填写完整 API 地址（如：https://api.example.com/v1）');
+    }
+    
+    const apiUrl = baseUrl + '/chat/completions';
+
     const prompt = `请从以下记账描述中提取信息，返回 JSON 格式：
 描述："${text}"
 
@@ -110,14 +245,14 @@ async function parseWithAI(text, apiKey) {
 只返回 JSON，不要其他内容。示例：
 {"amount": 200, "category": "餐饮", "description": "陈记顺和吃饭", "date": "2024-01-15"}`;
 
-    const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+    const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-            model: 'glm-4-flash',
+            model: modelName,
             messages: [
                 { role: 'user', content: prompt }
             ],
@@ -126,8 +261,8 @@ async function parseWithAI(text, apiKey) {
     });
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || '请求失败');
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error?.message || `请求失败: ${response.status}`);
     }
 
     const data = await response.json();
@@ -167,7 +302,7 @@ function showPreview(data) {
 }
 
 // 确认保存
-confirmBtn.addEventListener('click', () => {
+function confirmSave() {
     if (!currentParsed) return;
 
     const records = getRecords();
@@ -187,13 +322,13 @@ confirmBtn.addEventListener('click', () => {
     // 刷新显示
     updateStats();
     loadRecentRecords();
-});
+}
 
 // 取消
-cancelBtn.addEventListener('click', () => {
+function cancelSave() {
     previewArea.classList.add('hidden');
     currentParsed = null;
-});
+}
 
 // 显示撤销确认弹窗
 function showUndoModal(record) {
@@ -203,7 +338,7 @@ function showUndoModal(record) {
 }
 
 // 确认撤销
-confirmUndoBtn.addEventListener('click', () => {
+function confirmUndo() {
     if (!recordToDelete) return;
 
     const records = getRecords().filter(r => r.id !== recordToDelete.id);
@@ -214,13 +349,13 @@ confirmUndoBtn.addEventListener('click', () => {
     
     updateStats();
     loadRecentRecords();
-});
+}
 
 // 取消撤销
-cancelUndoBtn.addEventListener('click', () => {
+function cancelUndo() {
     recordToDelete = null;
     undoModal.classList.add('hidden');
-});
+}
 
 // 获取所有记录
 function getRecords() {
