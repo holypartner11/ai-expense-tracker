@@ -12,7 +12,11 @@
 
 ## 使用方法
 
-### 1. 配置 AI 模型
+### 1. 在线使用
+直接访问部署好的网站：
+**https://holypartner11.github.io/ai-expense-tracker/**
+
+### 2. 配置 AI 模型
 
 只需要填写 **2 个信息**：
 
@@ -29,7 +33,7 @@
 - ❌ 模型不存在 - 请检查模型名称
 - ⚠️ 额度不足 - 需要充值或等待
 
-### 2. 获取 API Key
+### 3. 获取 API Key
 
 根据你选择的模型，前往对应平台申请：
 
@@ -38,7 +42,7 @@
 - **DeepSeek**：https://platform.deepseek.com/
 - **OpenAI**：https://platform.openai.com/
 
-### 3. 开始记账
+### 4. 开始记账
 
 1. 用浏览器打开 `index.html`
 2. 输入模型名称和 API Key（自动保存到本地）
