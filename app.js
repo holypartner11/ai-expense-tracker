@@ -60,6 +60,8 @@ const modelInput = document.getElementById('modelInput');
 const modelDropdown = document.getElementById('modelDropdown');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const apiHint = document.getElementById('apiHint');
+const pingBtn = document.getElementById('pingBtn');
+const pingResult = document.getElementById('pingResult');
 const recordInput = document.getElementById('recordInput');
 const submitBtn = document.getElementById('submitBtn');
 const toggleKeyBtn = document.getElementById('toggleKeyBtn');
@@ -213,6 +215,9 @@ function setupEventListeners() {
         selectModel('glm-4-flash');
         apiKeyInput.focus();
     });
+    
+    // 测试连接按钮
+    pingBtn.addEventListener('click', testConnection);
     
     // 分类筛选
     categoryFilter.addEventListener('change', (e) => {
@@ -581,6 +586,120 @@ function loadRecentRecords() {
             </div>
         </div>
     `).join('');
+}
+
+// 测试连接
+async function testConnection() {
+    const modelName = modelInput.value.trim();
+    const apiKey = apiKeyInput.value.trim();
+
+    if (!modelName) {
+        showPingResult('请先输入模型名称', 'error');
+        modelInput.focus();
+        return;
+    }
+
+    if (!apiKey) {
+        showPingResult('请先输入 API Key', 'error');
+        apiKeyInput.focus();
+        return;
+    }
+
+    // 显示测试中状态
+    pingBtn.disabled = true;
+    pingBtn.textContent = '⏳ 测试中...';
+    showPingResult('正在连接...', 'loading');
+
+    try {
+        let baseUrl = detectApiUrl(modelName);
+        
+        // 如果没匹配到，尝试解析模型名是否为 URL
+        if (!baseUrl && modelName.startsWith('http')) {
+            baseUrl = modelName.replace(/\/$/, '');
+            const urlParts = baseUrl.split('/');
+            baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
+        }
+        
+        if (!baseUrl) {
+            throw new Error('无法识别此模型，请填写完整 API 地址');
+        }
+        
+        const apiUrl = baseUrl + '/chat/completions';
+
+        // 发送一个简单的测试请求
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: modelName,
+                messages: [{ role: 'user', content: 'hi' }],
+                max_tokens: 5
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.choices && data.choices[0]) {
+                showPingResult('✅ 连接成功', 'success');
+            } else {
+                showPingResult('⚠️ 响应异常，请检查模型名称', 'warning');
+            }
+        } else {
+            const error = await response.json().catch(() => ({}));
+            const errorMsg = error.error?.message || `HTTP ${response.status}`;
+            
+            if (response.status === 401) {
+                showPingResult('❌ API Key 无效', 'error');
+            } else if (response.status === 404) {
+                showPingResult('❌ 模型不存在，请检查模型名称', 'error');
+            } else if (response.status === 429) {
+                showPingResult('⚠️ 请求过于频繁或额度不足', 'warning');
+            } else {
+                showPingResult(`❌ 连接失败: ${errorMsg}`, 'error');
+            }
+        }
+    } catch (error) {
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            showPingResult('❌ 网络错误，请检查网络连接', 'error');
+        } else {
+            showPingResult(`❌ ${error.message}`, 'error');
+        }
+    } finally {
+        pingBtn.disabled = false;
+        pingBtn.textContent = '🔗 测试连接';
+        
+        // 3秒后清除成功/警告状态
+        setTimeout(() => {
+            if (pingResult.classList.contains('text-green-600') || 
+                pingResult.classList.contains('text-yellow-600')) {
+                pingResult.classList.add('hidden');
+            }
+        }, 3000);
+    }
+}
+
+// 显示连接测试结果
+function showPingResult(message, type) {
+    pingResult.textContent = message;
+    pingResult.classList.remove('hidden', 'text-green-600', 'text-red-600', 'text-yellow-600', 'text-gray-600');
+    
+    switch(type) {
+        case 'success':
+            pingResult.classList.add('text-green-600');
+            break;
+        case 'error':
+            pingResult.classList.add('text-red-600');
+            break;
+        case 'warning':
+            pingResult.classList.add('text-yellow-600');
+            break;
+        case 'loading':
+            pingResult.classList.add('text-gray-600');
+            break;
+    }
 }
 
 // 工具函数
