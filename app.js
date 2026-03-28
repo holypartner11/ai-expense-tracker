@@ -209,9 +209,8 @@ function setupEventListeners() {
         }
     });
     
-    // 智谱链接点击 - 自动填充
+    // 智谱链接点击 - 自动填充并跳转
     zhipuLink.addEventListener('click', (e) => {
-        e.preventDefault();
         selectModel('glm-4-flash');
         apiKeyInput.focus();
     });
